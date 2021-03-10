@@ -1,5 +1,5 @@
-Diesel upsert experiment
-========================
+Diesel group by experiment
+==========================
 
 Previous: https://github.com/pickfire/diesel-upsert
 
