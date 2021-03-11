@@ -71,7 +71,24 @@ INNER JOIN users ON users.id = agg.user_id
 INNER JOIN posts ON posts.id = agg.post_id;
 ```
 
-To be continued...
+I found out that the error is showing something else but the maintainer
+pointed out that the incorrect part was that I was using `i32` rather than
+`i64` for `BigInt`. After I fixed that I got it compiling again.
+
+```rust
+error[E0277]: the trait bound `CommentCount: FromSqlRow<Untyped, _>` is not satisfied
+  --> src/main.rs:48:9
+   |
+48 |     "#).get_results::<CommentCount>(&conn).unwrap();
+   |         ^^^^^^^^^^^ the trait `FromSqlRow<Untyped, _>` is not implemented for `CommentCount`
+   |
+   = note: required because of the requirements on the impl of `LoadQuery<_, CommentCount>` for `SqlQuery`
+
+error: aborting due to previous error; 2 warnings emitted
+```
+
+Other than the confusing error, if I didn't face that it should be very
+straightforward if I found out about `QueryableByName` derive.
 
 The example I tested out here have 3 struct (based on the previous ones).
 sqlite was used for easy testing.
@@ -89,13 +106,26 @@ sqlite was used for easy testing.
 I want to find all posts that does not have any comments. The query,
 
 ```rust
-TODO
-```
+#[derive(QueryableByName, Debug)]
+struct CommentCount {
+    #[sql_type = "Text"]
+    name: String,
+    #[sql_type = "Text"]
+    title: String,
+    #[sql_type = "BigInt"]
+    count: i64,
+}
 
-Which results in the SQL query,
-
-```sql
-TODO
+let data = diesel::sql_query(r#"
+SELECT users.name, posts.title, agg.count AS count
+ FROM (
+    SELECT comments.user_id, comments.post_id, count(comments.id) AS count 
+     FROM comments 
+    GROUP BY comments.user_id, comments.post_id 
+) as agg                       
+INNER JOIN users ON users.id = agg.user_id
+INNER JOIN posts ON posts.id = agg.post_id;
+"#).get_results::<CommentCount>(&conn).unwrap();
 ```
 
 ## Get started
